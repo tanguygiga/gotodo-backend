@@ -9,7 +9,7 @@ import (
 
 // exports
 const (
-	Adress      = "localhost:8080"
+	Address     = "localhost:8080"
 	TodoDaoImpl = "txt"
 	fileName    = "/todo.txt"
 )

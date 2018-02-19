@@ -28,6 +28,7 @@ func NewTodo(impl string) *Todo {
 	return h
 }
 
+// ServeHTTP handler for Todo
 func (h *Todo) ServeHTTP(rsw http.ResponseWriter, req *http.Request) {
 	var head string
 	head, req.URL.Path = shared.ShiftPath(req.URL.Path)

@@ -7,9 +7,7 @@ func TodoFactory(impl string) Todo {
 	var dao Todo
 	switch impl {
 	case "txt":
-		dao = &TodoTxtImpl{
-			Tm: make(map[int]string),
-		}
+		dao = &todoTxtImpl{}
 	default:
 		dao = nil
 		fmt.Print("Not yet implemented !")

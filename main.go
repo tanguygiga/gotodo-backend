@@ -10,9 +10,11 @@ import (
 
 func main() {
 	app := &router.App{
-		// /todo/
-		Todo: handler.NewTodo(s.TodoDaoImpl),
+		Routes: map[string]http.Handler{
+			"todo": handler.NewTodo(s.TodoDaoImpl),
+		},
 	}
-	log.Println("listening on " + s.Adress)
-	log.Fatal(http.ListenAndServe(s.Adress, app))
+
+	log.Println("listening on " + s.Address)
+	log.Fatal(http.ListenAndServe(s.Address, app))
 }

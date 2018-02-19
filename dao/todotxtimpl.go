@@ -3,35 +3,40 @@ package dao
 import (
 	"bufio"
 	"fmt"
-	m "gotodo-backend/model"
-	"gotodo-backend/shared"
 	"log"
 	"os"
 	"sort"
+
+	m "gotodo-backend/model"
+	"gotodo-backend/shared"
 )
 
-type TodoMap map[int]string
+var cache map[int]string
 
 // TodoTxtImpl text implementation of Todo
-type TodoTxtImpl struct {
-	Tm TodoMap
+type todoTxtImpl struct {
 }
 
-// GetAll return all Todo
-func (impl TodoTxtImpl) GetAll() (listTodo []m.Todo, err error) {
-	tm := impl.Tm
-	if len(tm) == 0 {
+func getCache() (cache map[int]string, err error) {
+	if len(cache) == 0 {
+		cache = make(map[int]string)
 		f := openFile()
 		s := bufio.NewScanner(f)
 		for i := 1; s.Scan(); i++ {
-			tm[i] = s.Text()
+			cache[i] = s.Text()
 		}
-		if err = s.Err(); err != nil {
-			return nil, err
-		}
+		err = s.Err()
 	}
+	return cache, err
+}
 
-	for k, v := range tm {
+// GetAll return all Todo
+func (*todoTxtImpl) GetAll() (listTodo []m.Todo, err error) {
+	cache, err = getCache()
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range cache {
 		var t m.Todo
 		t.ID = k
 		t.Task = v
@@ -40,20 +45,51 @@ func (impl TodoTxtImpl) GetAll() (listTodo []m.Todo, err error) {
 	return listTodo, nil
 }
 
-// Get return a Todo given an ID
-func (impl TodoTxtImpl) Get(id int) (t m.Todo, err error) {
-	tm := impl.Tm
-	ok := false
-	err = notInCollectionError(id)
-	t.Task, ok = tm[id]
-	if ok {
-		err = nil
+// Get return a Todo given an id
+func (*todoTxtImpl) Get(id int) (t m.Todo, err error) {
+	cache, err = getCache()
+	if err != nil {
+		return t, err
+	}
+	found := false
+	t.Task, found = cache[id]
+	if !found {
+		err = notInCollectionError(id)
 	}
 	return t, err
 }
 
 // Create a Todo
-func (impl TodoTxtImpl) Create(t *m.Todo) error {
+func (*todoTxtImpl) Create(t *m.Todo) (err error) {
+	cache, err = getCache()
+	if err != nil {
+		return err
+	}
+	n := getLastKey(cache) + 1
+	cache[n] = t.Task
+	list := exctractTasks(cache)
+	err = writeSortedLines(shared.Todotxt, list)
+	return err
+}
+
+func exctractTasks(m map[int]string) (list []string) {
+	for _, v := range m {
+		list = append(list, v)
+	}
+	return list
+}
+
+func getLastKey(m map[int]string) (lastKey int) {
+	for k := range m {
+		if k > lastKey {
+			lastKey = k
+		}
+	}
+	return lastKey
+}
+
+// Create a Todo
+func create(t *m.Todo) error {
 	f := openFile()
 	s := bufio.NewScanner(f)
 	var list []string
@@ -69,7 +105,7 @@ func (impl TodoTxtImpl) Create(t *m.Todo) error {
 }
 
 // Update a Todo
-func (impl TodoTxtImpl) Update(t *m.Todo) error {
+func (impl todoTxtImpl) Update(t *m.Todo) error {
 	f := openFile()
 	err := notInCollectionError(t.ID)
 	s := bufio.NewScanner(f)
@@ -93,17 +129,16 @@ func (impl TodoTxtImpl) Update(t *m.Todo) error {
 }
 
 // Delete a Todo given an id
-func (impl TodoTxtImpl) Delete(id int) error {
+func (impl todoTxtImpl) Delete(id int) error {
 	err := notInCollectionError(id)
-	tm := impl.Tm
-	_, present := tm[id]
+	_, present := cache[id]
 	if present {
-		delete(tm, id)
+		delete(cache, id)
 		err = nil
 	}
 	return err
 }
-func (impl TodoTxtImpl) delete(id int) error {
+func (impl todoTxtImpl) delete(id int) error {
 	err := notInCollectionError(id)
 	f := openFile()
 	s := bufio.NewScanner(f)
