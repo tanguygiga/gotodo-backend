@@ -11,28 +11,28 @@ import (
 	"gotodo-backend/shared"
 )
 
-var cache map[int]string
-
 // TodoTxtImpl text implementation of Todo
 type todoTxtImpl struct {
+	cache map[int]string
 }
 
-func getCache() (cache map[int]string, err error) {
-	if len(cache) == 0 {
-		cache = make(map[int]string)
+func (impl *todoTxtImpl) getCache() (map[int]string, error) {
+	var err error
+	if len(impl.cache) == 0 {
+		impl.cache = make(map[int]string)
 		f := openFile()
 		s := bufio.NewScanner(f)
 		for i := 1; s.Scan(); i++ {
-			cache[i] = s.Text()
+			impl.cache[i] = s.Text()
 		}
 		err = s.Err()
 	}
-	return cache, err
+	return impl.cache, err
 }
 
 // GetAll return all Todo
-func (*todoTxtImpl) GetAll() (listTodo []m.Todo, err error) {
-	cache, err = getCache()
+func (impl *todoTxtImpl) GetAll() (listTodo []m.Todo, err error) {
+	cache, err := impl.getCache()
 	if err != nil {
 		return nil, err
 	}
@@ -46,11 +46,12 @@ func (*todoTxtImpl) GetAll() (listTodo []m.Todo, err error) {
 }
 
 // Get return a Todo given an id
-func (*todoTxtImpl) Get(id int) (t m.Todo, err error) {
-	cache, err = getCache()
+func (impl *todoTxtImpl) Get(id int) (t m.Todo, err error) {
+	cache, err := impl.getCache()
 	if err != nil {
 		return t, err
 	}
+	t.ID = id
 	found := false
 	t.Task, found = cache[id]
 	if !found {
@@ -60,21 +61,21 @@ func (*todoTxtImpl) Get(id int) (t m.Todo, err error) {
 }
 
 // Create a Todo
-func (*todoTxtImpl) Create(t *m.Todo) (err error) {
-	cache, err = getCache()
+func (impl *todoTxtImpl) Create(t *m.Todo) (err error) {
+	cache, err := impl.getCache()
 	if err != nil {
 		return err
 	}
 	n := getLastKey(cache) + 1
 	cache[n] = t.Task
-	list := exctractTasks(cache)
+	list := extractTasks(cache)
 	err = writeSortedLines(shared.Todotxt, list)
 	return err
 }
 
-func exctractTasks(m map[int]string) (list []string) {
+func extractTasks(m map[int]string) (list []string) {
 	for _, v := range m {
-		list = append(list, v)
+		list = append(list, v+"\n")
 	}
 	return list
 }
@@ -105,7 +106,7 @@ func create(t *m.Todo) error {
 }
 
 // Update a Todo
-func (impl todoTxtImpl) Update(t *m.Todo) error {
+func (todoTxtImpl) Update(t *m.Todo) error {
 	f := openFile()
 	err := notInCollectionError(t.ID)
 	s := bufio.NewScanner(f)
@@ -129,15 +130,25 @@ func (impl todoTxtImpl) Update(t *m.Todo) error {
 }
 
 // Delete a Todo given an id
-func (impl todoTxtImpl) Delete(id int) error {
-	err := notInCollectionError(id)
-	_, present := cache[id]
+func (impl *todoTxtImpl) Delete(id int) error {
+	cache, err := impl.getCache()
+	if err != nil {
+		return err
+	}
+	err = notInCollectionError(id)
+	present := false
+	_, present = cache[id]
 	if present {
 		delete(cache, id)
 		err = nil
+	} else {
+		return err
 	}
+	list := extractTasks(cache)
+	err = writeSortedLines(shared.Todotxt, list)
 	return err
 }
+
 func (impl todoTxtImpl) delete(id int) error {
 	err := notInCollectionError(id)
 	f := openFile()
@@ -185,7 +196,7 @@ func writeSortedLines(file string, lines []string) error {
 		if "\n" == line {
 			continue
 		}
-		_, err := w.WriteString(line)
+		_, err = w.WriteString(line)
 		if err != nil {
 			return err
 		}

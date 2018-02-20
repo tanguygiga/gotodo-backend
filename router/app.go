@@ -11,13 +11,13 @@ type App struct {
 }
 
 // ServeHTTP serve the corresponding handler given a path
-func (a *App) ServeHTTP(rsw http.ResponseWriter, req *http.Request) {
+func (a App) ServeHTTP(rsw http.ResponseWriter, req *http.Request) {
 	var head string
 	head, req.URL.Path = shared.ShiftPath(req.URL.Path)
 	h, found := a.Routes[head]
 	if found {
 		h.ServeHTTP(rsw, req)
-		return
+	} else {
+		http.Error(rsw, "Not Found", http.StatusNotFound)
 	}
-	http.Error(rsw, "Not Found", http.StatusNotFound)
-	}
+}

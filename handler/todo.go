@@ -3,12 +3,13 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
-	"gotodo-backend/dao"
-	"gotodo-backend/model"
-	"gotodo-backend/shared"
 	"log"
 	"net/http"
 	"strconv"
+
+	"gotodo-backend/dao"
+	"gotodo-backend/model"
+	"gotodo-backend/shared"
 )
 
 const (
@@ -29,7 +30,7 @@ func NewTodo(impl string) *Todo {
 }
 
 // ServeHTTP handler for Todo
-func (h *Todo) ServeHTTP(rsw http.ResponseWriter, req *http.Request) {
+func (h Todo) ServeHTTP(rsw http.ResponseWriter, req *http.Request) {
 	var head string
 	head, req.URL.Path = shared.ShiftPath(req.URL.Path)
 	if head == "" {
@@ -39,7 +40,7 @@ func (h *Todo) ServeHTTP(rsw http.ResponseWriter, req *http.Request) {
 		case http.MethodPost:
 			h.create(rsw, req)
 		default:
-			http.Error(rsw, fmt.Sprintf("%s is not allowed", req.Method), http.StatusMethodNotAllowed)
+			httpErrorMethodNotAllowed(rsw, req)
 		}
 	} else {
 		id, e := strconv.Atoi(head)
@@ -55,9 +56,12 @@ func (h *Todo) ServeHTTP(rsw http.ResponseWriter, req *http.Request) {
 		case http.MethodDelete:
 			h.delete(rsw, req, id)
 		default:
-			http.Error(rsw, fmt.Sprintf("%s is not allowed", req.Method), http.StatusMethodNotAllowed)
+			httpErrorMethodNotAllowed(rsw, req)
 		}
 	}
+}
+func httpErrorMethodNotAllowed(rsw http.ResponseWriter, req *http.Request) {
+	http.Error(rsw, fmt.Sprintf("%s on %s is not allowed", req.Method, req.RequestURI), http.StatusMethodNotAllowed)
 }
 
 func (h *Todo) getAll(w http.ResponseWriter, r *http.Request) {
@@ -67,23 +71,23 @@ func (h *Todo) getAll(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, e.Error(), http.StatusBadRequest)
 		return
 	}
-	json, _ := json.Marshal(listTodo)
+	data, _ := json.Marshal(listTodo)
 	w.Header().Set(contentType, appJSON)
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "%s", json)
+	fmt.Fprintf(w, "%s", data)
 }
 
 func (h *Todo) get(w http.ResponseWriter, r *http.Request, id int) {
 	log.Printf("%s %s", r.Method, r.RequestURI)
 	t, e := h.dao.Get(id)
-	json, _ := json.Marshal(t)
+	data, _ := json.Marshal(t)
 	if e != nil {
 		http.Error(w, e.Error(), http.StatusBadRequest)
 		return
 	}
 	w.Header().Set(contentType, appJSON)
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "%s", json)
+	fmt.Fprintf(w, "%s", data)
 }
 
 func (h *Todo) create(w http.ResponseWriter, r *http.Request) {
@@ -95,10 +99,10 @@ func (h *Todo) create(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, e.Error(), http.StatusBadRequest)
 		return
 	}
-	json, _ := json.Marshal(t)
+	data, _ := json.Marshal(t)
 	w.Header().Set(contentType, appJSON)
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprintf(w, "%s", json)
+	fmt.Fprintf(w, "%s", data)
 }
 
 func (h *Todo) update(w http.ResponseWriter, r *http.Request, id int) {
@@ -111,10 +115,10 @@ func (h *Todo) update(w http.ResponseWriter, r *http.Request, id int) {
 		http.Error(w, e.Error(), http.StatusBadRequest)
 		return
 	}
-	json, _ := json.Marshal(t)
+	data, _ := json.Marshal(t)
 	w.Header().Set(contentType, appJSON)
 	w.WriteHeader(http.StatusNoContent)
-	fmt.Fprintf(w, "%s", json)
+	fmt.Fprintf(w, "%s", data)
 }
 
 func (h *Todo) delete(w http.ResponseWriter, r *http.Request, id int) {
